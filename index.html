@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="author" content="Jake Sze">
+<meta name="description" content="JUPAS 選科助手 — 按課程公布的加權計分方法計算 DSE 分數，對照去年中位數／下四分位數，並檢查 20 個志願排位。非官方工具。">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230d2337'/%3E%3Ctext x='16' y='24' font-size='20' text-anchor='middle' fill='%234ea1ff' font-family='sans-serif'%3E%E9%81%B8%3C/text%3E%3C/svg%3E">
+<title>JUPAS 選科助手 — DSE 成績、加權計分與 20 志願排位</title>
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <h1>JUPAS 選科助手 <span class="ver">MVP</span></h1>
+    <p class="tagline">
+      用你的 DSE 成績，按<strong>課程自己公布的加權計分方法</strong>計算分數，對照去年獲取錄者的
+      中位數／下四分位數，再檢查你的 20 個志願排位。
+    </p>
+    <div class="chips">
+      <span class="chip chip-warn">非官方工具 · 與 JUPAS 及各院校無關</span>
+      <span class="chip">不會預測取錄機會，只顯示歷史位置</span>
+      <span class="chip" id="dataStamp">資料核對日期載入中…</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ===================== 成績輸入 ===================== -->
+  <section class="panel" id="gradePanel">
+    <div class="panel-head">
+      <h2><span class="num">1</span> 輸入你的 DSE 成績</h2>
+      <div class="head-actions">
+        <button class="btn jump" id="btnJumpPlan" title="跳至第 4 部分：你的 20 個志願">↓ 睇我的 20 個志願 <span class="jumpcount">0/20</span></button>
+        <button class="btn ghost" id="btnSample">載入示範成績</button>
+        <button class="btn ghost" id="btnClearProfile">清空</button>
+      </div>
+    </div>
+
+    <div class="grade-grid">
+      <div class="grade-block">
+        <h3>核心科目</h3>
+        <div class="grade-row" data-core="CHI"></div>
+        <div class="grade-row" data-core="ENG"></div>
+        <div class="grade-row" data-core="MATH"></div>
+        <div class="grade-row" data-core="CSD"></div>
+      </div>
+
+      <div class="grade-block">
+        <h3>選修科目 <small>（最多 4 科，可包括 M1／M2）</small></h3>
+        <div id="electiveRows"></div>
+        <button class="btn ghost small" id="btnAddElective">＋ 增加一科</button>
+      </div>
+
+      <div class="grade-block">
+        <h3>其他 <small>（只適用於承認的課程）</small></h3>
+        <div id="catBRows"></div>
+        <button class="btn ghost small" id="btnAddCatB">＋ 增加應用學習科目 (ApL)</button>
+        <p class="hint hint-inline" id="catBHint"></p>
+        <div id="catCRows"></div>
+        <button class="btn ghost small" id="btnAddCatC">＋ 增加其他語言</button>
+      </div>
+    </div>
+
+    <p class="hint">
+      公民與社會發展科只有「達標」／「未達標」，不計分；M1／M2 是否可當一科選修科視乎課程。
+      你的輸入只存在這部裝置的瀏覽器（localStorage）。
+    </p>
+  </section>
+
+  <!-- ===================== 結果總覽 ===================== -->
+  <section class="panel" id="funnelPanel">
+    <div class="panel-head"><h2><span class="num">2</span> 你的分數落在哪裡</h2></div>
+    <div id="funnel" class="funnel"></div>
+  </section>
+
+  <!-- ===================== 課程探索 ===================== -->
+  <section class="panel" id="explorePanel">
+    <div class="panel-head">
+      <h2><span class="num">3</span> 探索課程</h2>
+      <div class="head-actions">
+        <input type="search" id="q" placeholder="搜尋課程代號／名稱…" autocomplete="off">
+        <select id="sortBy">
+          <option value="delta">按「我 vs 去年 LQ」排序</option>
+          <option value="score">按我的分數排序</option>
+          <option value="lq">按去年 LQ 排序（低至高）</option>
+          <option value="inst">按院校排序</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="filters">
+      <div class="filter-group" id="instFilter"></div>
+      <label class="switch"><input type="checkbox" id="onlyEligible"> 只看我合資格的</label>
+      <label class="switch"><input type="checkbox" id="onlyComputable"> 隱藏未核實計分規則的</label>
+      <label class="switch"><input type="checkbox" id="onlyWithHistory"> 只看有歷史分數的</label>
+    </div>
+
+    <p class="legend">
+      <span class="badge verified">已核實</span> 官方公式＋比重＋歷史分數齊全 ·
+      <span class="badge partial">部分</span> 已計算但缺少部分官方規則（詳情內列明假設） ·
+      <span class="badge blocked">未核實</span> 拒絕計算
+    </p>
+
+    <div id="progList" class="prog-list"></div>
+    <p class="empty" id="progEmpty" hidden>沒有符合條件的課程。放寬篩選條件試試。</p>
+  </section>
+
+  <!-- ===================== 志願排位 ===================== -->
+  <section class="panel" id="planPanel">
+    <div class="panel-head">
+      <h2><span class="num">4</span> 你的 20 個志願</h2>
+      <div class="head-actions">
+        <span class="counter" id="planCounter">0 / 20</span>
+        <button class="btn ghost" id="btnExportPlan">匯出</button>
+        <button class="btn ghost" id="btnPrint">列印</button>
+        <button class="btn ghost" id="btnClearPlan">清空志願</button>
+      </div>
+    </div>
+    <div id="planWarnings" class="warnings"></div>
+    <div id="planList" class="plan-list"></div>
+    <p class="hint">
+      Band A＝第 1–3 志願、B＝4–6、C＝7–10、D＝11–15、E＝16–20。
+      院校在文憑試成績公布前<strong>只看到 Band，看不到 Band 內的實際次序</strong>。
+    </p>
+  </section>
+
+  <!-- ===================== 院校 Band A 數據 ===================== -->
+  <section class="panel">
+    <div class="panel-head"><h2>院校 Band A 取錄比例 <span class="badge unverified">未核實</span></h2></div>
+    <p class="hint" id="bandANote"></p>
+    <table class="table" id="bandATable"></table>
+  </section>
+
+  <!-- ===================== 資料來源 ===================== -->
+  <section class="panel">
+    <div class="panel-head"><h2>資料覆蓋與來源</h2></div>
+    <div id="coverage"></div>
+    <h3 style="margin-top:18px">來源文件</h3>
+    <div id="sources"></div>
+    <div class="disclaimer">
+      <h3>使用前請閱讀</h3>
+      <ul>
+        <li>本工具<strong>並非官方</strong>，與 JUPAS 及各院校無任何關係；不會讀取亦不會修改你的 JUPAS 申請。</li>
+        <li>分數只描述你<strong>相對於去年獲取錄者</strong>的中位數／下四分位數的位置，<strong>不是</strong>取錄機會，亦<strong>不是</strong>今年的收生門檻。</li>
+        <li>各院校每年修訂科目比重、計分公式及最低入學要求；不同課程的分數因加權方法不同而<strong>不可直接互相比較</strong>。</li>
+        <li>未能核實的計分規則一律<strong>不予估算</strong>，會標示「未核實」或「部分」。</li>
+        <li>個別課程的額外要求（指定選修科、面試、作品集、體能測試）尚未收錄，請查閱官方資料。</li>
+      </ul>
+    </div>
+  </section>
+
+</main>
+
+<button class="fab" id="fabNav" title="快速跳至我的 20 個志願">
+  <span class="fab-arrow">↓</span>
+  <span class="fab-text">我的 20 個志願</span>
+  <span class="fab-count">0/20</span>
+</button>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <p class="byline">Product by <strong>Jake Sze</strong></p>
+    <p class="fineprint">
+      <span id="footerYear"></span> ·
+      非官方工具，與 JUPAS 及各院校無關；分數只反映相對於去年獲取錄者的位置，不是取錄機會，亦不是今年的收生門檻。
+    </p>
+  </div>
+</footer>
+
+<script src="js/engine.js"></script>
+<script src="js/data/subjects.js"></script>
+<script src="js/data/apl.js"></script>
+<script src="js/data/institutions.js"></script>
+<script src="js/data/programmes.js"></script>
+<script src="js/data/programmes-ext.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
