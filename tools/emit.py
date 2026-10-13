@@ -73,7 +73,10 @@ out.append("  root.JUPAS_SOURCES.JUPAS_2025_AGG = SRC;")
 out.append("  root.JUPAS_PROGRAMMES = (root.JUPAS_PROGRAMMES || []).concat(EXTRACTED);")
 out.append("})(typeof globalThis !== 'undefined' ? globalThis : this);")
 
-open(r'C:\Users\jake\jupas-mvp\js\data\programmes-ext.js', 'w', encoding='utf-8').write("\n".join(out) + "\n")
+# Write LF endings regardless of platform, so re-running the generator does not
+# churn the file (and so the committed version matches what Pages serves).
+with open(r'C:\Users\jake\jupas-mvp\js\data\programmes-ext.js', 'w', encoding='utf-8', newline='\n') as fh:
+    fh.write("\n".join(out) + "\n")
 
 tot = sum(len(v) for v in ROWS.values())
 print('emitted', tot, 'rows:', {k: len(v) for k, v in ROWS.items() if v})

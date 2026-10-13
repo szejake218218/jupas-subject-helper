@@ -1,0 +1,8 @@
+# Keep line endings stable across platforms so generated data files do not
+# show up as changed on every re-run of tools/emit.py.
+* text=auto eol=lf
+
+# Binary assets
+*.png binary
+*.jpg binary
+*.ico binary
