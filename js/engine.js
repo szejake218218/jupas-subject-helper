@@ -429,15 +429,21 @@
       verdict: 'unknown'
     };
     // Which published figure does this programme actually give us to compare against?
-    if (hist && hist.mean != null && hist.lq == null) out.refType = 'mean';
-    else if (hist && hist.lq != null) out.refType = 'lq';
+    if (hist && hist.lq != null) out.refType = 'lq';
+    else if (hist && hist.mean != null) {
+      // A mean is only comparable if the weightings behind it are known.
+      out.refType = (program.scoring && program.scoring.referenceUsable === false) ? 'none' : 'mean';
+    } else if (hist && hist.median != null) out.refType = 'median';
+    else out.refType = 'none';
 
     var r2 = function (n) { return Math.round(n * 100) / 100; };
     if (score.ok && hist) {
       if (out.refType === 'mean') out.deltaMean = r2(score.score - hist.mean);
       if (hist.lq != null) out.deltaLq = r2(score.score - hist.lq);
       if (hist.median != null) out.deltaMedian = r2(score.score - hist.median);
-      out.deltaRef = (out.refType === 'mean') ? out.deltaMean : out.deltaLq;
+      out.deltaRef = out.refType === 'mean' ? out.deltaMean
+        : out.refType === 'median' ? out.deltaMedian
+        : out.refType === 'lq' ? out.deltaLq : null;
     }
     out.verdict = verdictOf(out);
     return out;
@@ -446,9 +452,14 @@
   // Historical position only — never a probability of admission.
   function verdictOf(ev) {
     if (!ev.score.ok) return ev.score.status === 'blocked' ? 'blocked' : 'ineligible';
+    if (ev.refType === 'none') return 'ref-unavailable';
     if (ev.refType === 'mean') {
       if (ev.deltaMean == null) return 'no-history';
       return ev.deltaMean >= 0 ? 'above-mean' : 'below-mean';
+    }
+    if (ev.refType === 'median') {
+      if (ev.deltaMedian == null) return 'no-history';
+      return ev.deltaMedian >= 0 ? 'above-median' : 'below-median';
     }
     if (ev.deltaLq == null) return 'no-history';
     if (ev.deltaMedian != null && ev.deltaMedian >= 0) return 'above-median';
@@ -458,12 +469,14 @@
 
   var VERDICT_LABEL = {
     'above-median': '高於去年中位數',
+    'below-median': '低於去年中位數',
     'between-lq-median': '介乎去年下四分位數與中位數',
     'below-lq': '低於去年下四分位數',
     'above-mean': '高於去年平均分',
     'below-mean': '低於去年平均分',
     'ineligible': '不符合／無法計算',
     'blocked': '計分規則未核實',
+    'ref-unavailable': '已公布平均分，但科目比重未公布 → 不作比較',
     'no-history': '無歷史分數'
   };
 
@@ -528,6 +541,8 @@
       var band = bandOf(rank);
       var kind = !ev.score.ok ? 'bad'
         : ev.refType === 'mean' ? (ev.deltaMean >= 0 ? 'safe' : 'reach')
+        : ev.refType === 'median' ? (ev.deltaMedian >= 0 ? 'safe' : 'reach')
+        : ev.refType === 'none' ? 'bad'
         : (ev.deltaMedian != null && ev.deltaMedian >= 0) ? 'safe'
         : (ev.deltaLq != null && ev.deltaLq >= 0) ? 'border' : 'reach';
       bandSummary[band].n += 1;

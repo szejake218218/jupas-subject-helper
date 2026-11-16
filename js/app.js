@@ -273,17 +273,31 @@
 
   function metricBlock(ev) {
     var s = ev.score;
+    var h = ev.history;
     var sc = s.ok ? num(s.score) : '—';
-    var isMean = ev.refType === 'mean';
+    var v = function (x) { return (x == null) ? '—' : num(x); };
+    var cells;
+
+    if (ev.refType === 'lq') {
+      cells = [['去年 LQ', v(h && h.lq)], ['去年中位數', h && h.median != null ? num(h.median) : '—']];
+    } else if (ev.refType === 'median') {
+      // e.g. 嶺大: a weighted median is published, no lower quartile.
+      cells = [['去年中位數', v(h && h.median)], ['去年 LQ', '未公布']];
+    } else if (ev.refType === 'mean') {
+      cells = [['去年平均分', v(h && h.mean)], ['去年中位數', '未公布']];
+    } else {
+      // A mean is printed but its weightings are not (e.g. 理大) → not comparable.
+      cells = [['去年平均分', v(h && h.mean)], ['計分基準', '未公布']];
+    }
+
     var d = ev.deltaRef;
     var cls = d == null ? '' : (d >= 0 ? 'pos' : 'neg');
-    var refLabel = isMean ? '去年平均分' : '去年 LQ';
-    var refVal = ev.history ? (isMean ? ev.history.mean : ev.history.lq) : null;
+    var dLabel = ev.refType === 'mean' ? '平均分' : ev.refType === 'median' ? '中位數' : ' LQ';
+
     return '<div class="prog-metrics">' +
       '<div><label>我的分數</label><b>' + sc + '</b></div>' +
-      '<div><label>' + refLabel + '</label><b>' + num(refVal) + '</b></div>' +
-      '<div><label>去年中位數</label><b>' + (ev.history && ev.history.median != null ? num(ev.history.median) : (isMean ? '未公布' : '—')) + '</b></div>' +
-      '<div><label>對比' + (isMean ? '平均分' : ' LQ') + '</label><b class="' + cls + '">' + signed(d) + '</b></div>' +
+      cells.map(function (c) { return '<div><label>' + c[0] + '</label><b>' + c[1] + '</b></div>'; }).join('') +
+      '<div><label>對比' + dLabel + '</label><b class="' + cls + '">' + signed(d) + '</b></div>' +
       '<div><label>最低要求</label><b>' + (ev.requirement.met === null ? '—' : (ev.requirement.met ? '✓ 符合' : '✗ 未符合')) + '</b></div>' +
       '</div>';
   }

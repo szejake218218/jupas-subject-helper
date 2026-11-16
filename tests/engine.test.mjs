@@ -425,6 +425,38 @@ test('a programme is never scored on a ladder its institution has not published'
   assert.match(r.blockedReason, /換算/);
 });
 
+test('a median with no lower quartile is still comparable (median reference)', () => {
+  // 嶺大 publishes 加權最佳5科（中位數）only — no LQ column at all.
+  const p = {
+    id: 'TEST-MED', inst: 'LU', code: 'JS9996', titleZh: '', titleEn: 'x',
+    scoring: { formula: { type: 'best_n', n: 5 } },
+    scores: { median: 20, lq: null, mean: null, entryYear: 2026, publishedFor: 2027 },
+    requirements: {}, status: 'verified',
+    source: { label: 'x', asOf: '2026-01-01', url: 'https://example.org' }
+  };
+  const ev = E.evaluate(profile(), p, INST.LU);
+  assert.equal(ev.refType, 'median');
+  assert.equal(ev.deltaLq, null);
+  assert.equal(typeof ev.deltaMedian, 'number');
+  assert.equal(ev.deltaRef, ev.deltaMedian);
+  assert.ok(['above-median', 'below-median'].indexOf(ev.verdict) >= 0, ev.verdict);
+});
+
+test('a mean whose weightings were never published is not used as a comparison', () => {
+  // 理大 prints 入學平均分數（含科目比重） but the weightings live on Study@PolyU,
+  // so the printed mean is on a scale we cannot reproduce → must not compare.
+  const p = {
+    id: 'TEST-POLY', inst: 'POLYU', code: 'JS9995', titleZh: '', titleEn: 'x',
+    scoring: { formula: { type: 'best_n', n: 5 }, referenceUsable: false },
+    scores: { mean: 200, median: null, lq: null, entryYear: 2026, publishedFor: 2027 },
+    requirements: {}, status: 'partial',
+    source: { label: 'x', asOf: '2026-01-01', url: 'https://example.org' }
+  };
+  const ev = E.evaluate(profile(), p, INST.POLYU);
+  assert.equal(ev.refType, 'none');
+  assert.equal(ev.deltaRef, null);
+  assert.equal(ev.verdict, 'ref-unavailable');
+});
 test('HKBU now has a published ladder and is scored, against a MEAN not a median', () => {
   assert.equal(INST.HKBU.defaultScale, 'scale7');   // 5**=7, published in the guide
   const p = PROGS.find((x) => x.inst === 'HKBU' && x.scores && x.scores.mean != null);
