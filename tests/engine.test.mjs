@@ -17,6 +17,15 @@ require(path.join(here, '..', 'js', 'data', 'programmes-ext.js'));
 require(path.join(here, '..', 'js', 'data', 'programmes-2027.js'));
 require(path.join(here, '..', 'js', 'data', 'programmes-2027-hkbu.js'));
 require(path.join(here, '..', 'js', 'data', 'programmes-2027-hkmu.js'));
+require(path.join(here, '..', 'js', 'data', 'programmes-2027-lu.js'));
+require(path.join(here, '..', 'js', 'data', 'programmes-2027-hksyu.js'));
+require(path.join(here, '..', 'js', 'data', 'programmes-2027-uow.js'));
+require(path.join(here, '..', 'js', 'data', 'programmes-2027-thei.js'));
+require(path.join(here, '..', 'js', 'data', 'programmes-2027-twc.js'));
+require(path.join(here, '..', 'js', 'data', 'programmes-2027-hsuhk.js'));
+require(path.join(here, '..', 'js', 'data', 'programmes-2027-chc.js'));
+require(path.join(here, '..', 'js', 'data', 'programmes-2027-sfu.js'));
+require(path.join(here, '..', 'js', 'data', 'programmes-2027-hkmu-sssdp.js'));
 require(path.join(here, '..', 'js', 'data', 'programmes-2027-eduhk.js'));
 require(path.join(here, '..', 'js', 'data', 'programmes-2027-polyu.js'));
 require(path.join(here, '..', 'js', 'data', 'programmes-2027-hku.js'));
@@ -409,19 +418,37 @@ test('every programme is well formed', () => {
       assert.ok(p.scoring.formula.type, `${p.id} formula has no type`);
     }
     if (p.scores) {
-      // Either a published median + LQ pair, or a published weighted mean (HKBU).
-      const hasPair = p.scores.median != null && p.scores.lq != null;
+      // Either a published median + LQ pair, a median alone (嶺大 prints no LQ),
+      // or a published weighted mean (浸大 / 理大).
+      const hasMedian = p.scores.median != null;
+      const hasLq = p.scores.lq != null;
       const hasMean = p.scores.mean != null;
-      assert.ok(hasPair || hasMean, `${p.id} history is half-filled`);
+      assert.ok(hasMedian || hasLq || hasMean, `${p.id} history is empty`);
+      if (hasLq) assert.ok(hasMedian, `${p.id} has an LQ with no median`);
       assert.ok(p.scores.entryYear && p.scores.publishedFor, `${p.id} history is not dated`);
     }
   }
 });
 
-test('all nine participating institutions are configured', () => {
+test('all nine UGC institutions plus the SSSDP/self-financing ones are configured', () => {
   const nine = ['HKU', 'CUHK', 'HKUST', 'CITYU', 'POLYU', 'HKBU', 'LU', 'EDUHK', 'HKMU'];
   nine.forEach((code) => assert.ok(INST[code], `${code} missing from institution config`));
-  assert.equal(Object.keys(INST).length, 9);
+
+  const sssdp = ['SFU', 'CHC', 'HSUHK', 'TWC', 'THEI', 'UOW', 'HKSYU'];
+  sssdp.forEach((code) => {
+    assert.ok(INST[code], `${code} missing from institution config`);
+    // These pages publish no conversion table, so they must not be scored.
+    assert.equal(INST[code].defaultScale, null, `${code} must not have a ladder`);
+  });
+  assert.equal(Object.keys(INST).length, 16);
+
+  // A programme at an unpublished-ladder institution is listed but never scored.
+  const p = PROGS.find((x) => x.inst === 'SFU');
+  if (p) {
+    const r = E.computeScore(profile(), p, INST.SFU);
+    assert.equal(r.ok, false);
+    assert.equal(r.status, 'blocked');
+  }
 });
 
 test('a programme is never scored on a ladder its institution has not published', () => {

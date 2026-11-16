@@ -157,6 +157,41 @@
     }
   };
 
+  /* ------------------------------------------------------------------ *
+   * SSSDP / self-financing institutions (guide pp.144-148)
+   *
+   * These pages print no 入學分數換算表, so no ladder is published. The engine
+   * therefore refuses to score them (defaultScale: null) and they are listed
+   * with their published demand figures and mean/quartile numbers only.
+   * ------------------------------------------------------------------ */
+  var SSSDP_BASE = {
+    defaultScale: null,
+    catC: null,
+    scoringDefaults: { catCAsElective: false, aplAsElective: false, csdCounted: false },
+    gate: null, gateNote: NO_GATE, gateSource: null,
+    scaleSource: null,
+    scaleNote: '指南該頁未列出入學分數換算表 → 本工具不評分（不以假設的換算表計算）。',
+    catCNote: '丙類換算表未列於指南該頁。',
+    sssdp: true
+  };
+  var SSSDP_LIST = [
+    ['SFU', '聖方濟各大學', 'Saint Francis University', '方濟各', '#6b4f2a'],
+    ['CHC', '珠海學院', 'Chu Hai College of Higher Education', '珠海', '#1f4e79'],
+    ['HSUHK', '香港恒生大學', 'The Hang Seng University of Hong Kong', '恒大', '#0b5d3b'],
+    ['TWC', '東華學院', 'Tung Wah College', '東華', '#7b1e3a'],
+    ['THEI', '香港高等教育科技學院', 'Technological and Higher Education Institute of Hong Kong', '高科院', '#264653'],
+    ['UOW', '香港伍倫貢學院', 'UOW College Hong Kong', '伍倫貢', '#8a2d2d'],
+    ['HKSYU', '香港樹仁大學', 'Hong Kong Shue Yan University', '樹仁', '#2e4a7d']
+  ];
+  SSSDP_LIST.forEach(function (row) {
+    var entry = {
+      code: row[0], nameZh: row[1], nameEn: row[2], short: row[3], colour: row[4],
+      bandA: null
+    };
+    Object.keys(SSSDP_BASE).forEach(function (k) { entry[k] = SSSDP_BASE[k]; });
+    INSTITUTIONS[row[0]] = entry;
+  });
+
   root.JUPAS_INSTITUTIONS = INSTITUTIONS;
-  root.JUPAS_OTHER_INSTITUTIONS = [];   // all nine participating institutions are configured above
+  root.JUPAS_OTHER_INSTITUTIONS = SSSDP_LIST.map(function (r) { return r[0]; });
 })(typeof globalThis !== 'undefined' ? globalThis : this);

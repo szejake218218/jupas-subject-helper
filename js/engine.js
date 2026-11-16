@@ -445,11 +445,12 @@
       verdict: 'unknown'
     };
     // Which published figure does this programme actually give us to compare against?
-    if (hist && hist.lq != null) out.refType = 'lq';
-    else if (hist && hist.mean != null) {
-      // A mean is only comparable if the weightings behind it are known.
-      out.refType = (program.scoring && program.scoring.referenceUsable === false) ? 'none' : 'mean';
-    } else if (hist && hist.median != null) out.refType = 'median';
+    // If the institution's weights are unpublished, its figures are not reproducible
+    // and must not be compared at all — that check comes first, whatever is printed.
+    if (hist && program.scoring && program.scoring.referenceUsable === false) out.refType = 'none';
+    else if (hist && hist.lq != null) out.refType = 'lq';
+    else if (hist && hist.mean != null) out.refType = 'mean';
+    else if (hist && hist.median != null) out.refType = 'median';
     else out.refType = 'none';
 
     var r2 = function (n) { return Math.round(n * 100) / 100; };
