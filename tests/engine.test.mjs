@@ -14,6 +14,7 @@ require(path.join(here, '..', 'js', 'data', 'institutions.js'));
 require(path.join(here, '..', 'js', 'data', 'apl.js'));
 require(path.join(here, '..', 'js', 'data', 'programmes.js'));
 require(path.join(here, '..', 'js', 'data', 'programmes-ext.js'));
+require(path.join(here, '..', 'js', 'data', 'programmes-2027.js'));
 
 const INST = globalThis.JUPAS_INSTITUTIONS;
 const PROGS = globalThis.JUPAS_PROGRAMMES;
@@ -45,60 +46,103 @@ test('grade conversion follows each published scale', () => {
 });
 
 /* ------------------------------------------------------------------ *
- * Best-5 with subject weighting — CityU JS1201
- * CHI 3 (x1.5) = 4.5 | ENG 4 (x2.5) = 10 | MATH 4 (x2.5) = 10
- * PHY 3 (x2.5) = 7.5 | M2 4 (x2.5) = 10 | ECON 4 (x1) = 4
- * Best 5 (ENG forced) = 10 + 10 + 10 + 7.5 + 4.5 = 42
+ * Best-5 with subject weighting — CityU JS1201, 2027 method
+ * profile: CHI 3, ENG 4, MATH 4, PHY 3, M2 4, ECON 4
+ * weights: 英文/數學 x1.5 ; M1/M2/物理 x1.25 ; others x1
+ *   CHI  3 x1    = 3
+ *   ENG  4 x1.5  = 6
+ *   MATH 4 x1.5  = 6
+ *   PHY  3 x1.25 = 3.75
+ *   M2   4 x1.25 = 5
+ *   ECON 4 x1    = 4
+ * best 5 with ENG forced = 6 + 6 + 5 + 4 + 3.75 = 24.75   (CHI dropped)
+ * published: M 28.5, LQ 27.5
  * ------------------------------------------------------------------ */
 
-test('JS1201 weighted best-5 arithmetic is exact', () => {
+test('JS1201 weighted best-5 arithmetic is exact (2027 method)', () => {
   const p = byId('CITYU-JS1201');
   const r = score(p);
   assert.equal(r.ok, true);
-  assert.equal(r.score, 42);
-  assert.deepEqual(r.counted.map((c) => c.code).sort(), ['CHI', 'ENG', 'M2', 'MATH', 'PHY']);
+  assert.equal(r.score, 24.75);
+  assert.deepEqual(r.counted.map((c) => c.code).sort(), ['ECON', 'ENG', 'M2', 'MATH', 'PHY']);
   const eng = r.counted.find((c) => c.code === 'ENG');
-  assert.equal(eng.weight, 2.5);
-  assert.equal(eng.subtotal, 10);
-  const chi = r.counted.find((c) => c.code === 'CHI');
-  assert.equal(chi.weight, 1.5);
-  assert.equal(chi.subtotal, 4.5);
+  assert.equal(eng.weight, 1.5);
+  assert.equal(eng.subtotal, 6);
+  const m2 = r.counted.find((c) => c.code === 'M2');
+  assert.equal(m2.weight, 1.25);
+  assert.equal(m2.subtotal, 5);
 });
 
-test('ECON at x1 is the one dropped by best-5', () => {
-  const p = byId('CITYU-JS1201');
-  const r = score(p);
-  assert.equal(r.counted.some((c) => c.code === 'ECON'), false);
+test('CHI at x1 is the one dropped by best-5', () => {
+  const r = score(byId('CITYU-JS1201'));
+  assert.equal(r.counted.some((c) => c.code === 'CHI'), false);
+  assert.equal(r.counted.some((c) => c.code === 'ECON'), true);
 });
 
 test('JS1201 delta vs published LQ / median', () => {
   const ev = E.evaluate(profile(), byId('CITYU-JS1201'), INST.CITYU);
-  assert.equal(ev.deltaLq, -0.5);          // 42 - 42.5
-  assert.equal(ev.deltaMedian, -1.5);      // 42 - 43.5
+  assert.equal(ev.history.entryYear, 2026);
+  assert.equal(ev.deltaLq, -2.75);          // 24.75 - 27.5
+  assert.equal(ev.deltaMedian, -3.75);      // 24.75 - 28.5
   assert.equal(ev.verdict, 'below-lq');
 });
 
 /* ------------------------------------------------------------------ *
- * "3 core + 2 elective" — CityU JS1071 Data Science
- * CHI 3 x1 = 3 | ENG 5=5.5 x1.5 = 8.25 | MATH 5=5.5 x2 = 11 | PHY 5*=7 x1 | ECON 4 x1
- * = 3 + 8.25 + 11 + 7 + 4 = 33.25
+ * "3 core + 2 elective" — CityU JS1071 Data Science (2027 method)
+ * CHI 3 x1 = 3 | ENG 5.5 x1.25 = 6.875 | MATH 5.5 x1.5 = 8.25
+ * best 2 electives: PHY 5* = 7 x1, ECON 4 x1 = 4
+ * = 3 + 6.875 + 8.25 + 7 + 4 = 29.125
  * ------------------------------------------------------------------ */
 
 test('JS1071 cores + 2 electives arithmetic is exact', () => {
   const prof = profile({ eng: '5', math: '5', electives: [{ code: 'PHY', level: '5*' }, { code: 'ECON', level: '4' }] });
   const r = E.computeScore(prof, byId('CITYU-JS1071'), INST.CITYU);
-  assert.equal(r.score, 33.25);
+  // 3 + 6.875 + 8.25 + 7 + 4 = 29.125, and the engine reports totals to 2 d.p.
+  assert.equal(r.score, 29.13);
   assert.equal(r.counted.length, 5);
   assert.deepEqual(r.counted.map((c) => c.code), ['CHI', 'ENG', 'MATH', 'PHY', 'ECON']);
+});
+
+/* ------------------------------------------------------------------ *
+ * What-if must account for displacement: lifting a subject that is NOT
+ * currently counted gains only the margin by which it beats the subject it
+ * pushes out — not its full weighted value.
+ * ------------------------------------------------------------------ */
+
+test('lift suggestions account for the subject pushed out of the best-5', () => {
+  const p = byId('CITYU-JS1201');   // 2027 weights: ENG/MATH x1.5, M1/M2/PHY x1.25, rest x1
+  const lifts = E.liftSuggestions(profile(), p, INST.CITYU);
+
+  // CHI 3 is currently 6th (dropped). CHI 3->4 = 4, which displaces PHY 3.75:
+  // gain = 4 - 3.75 = 0.25, not the naive +1.
+  const chi = lifts.find((l) => l.code === 'CHI');
+  assert.equal(chi.from, '3');
+  assert.equal(chi.to, '4');
+  assert.equal(chi.gain, 0.25);
+
+  // PHY is already counted at 3.75, so lifting it adds its full weighted step:
+  // (4 - 3) x 1.25 = 1.25
+  const phy = lifts.find((l) => l.code === 'PHY');
+  assert.equal(phy.gain, 1.25);
+
+  assert.equal(lifts[0].gain >= lifts[lifts.length - 1].gain, true);
 });
 
 /* ------------------------------------------------------------------ *
  * M1/M2 rules
  * ------------------------------------------------------------------ */
 
-test('JS1211: when Maths and M1/M2 are both taken, only the better one counts', () => {
+test('the Maths / M1-M2 exclusivity flag still works (synthetic record)', () => {
+  // CityU's 2027 method no longer states this rule, but the engine capability is
+  // still needed for the institutions that do — so test it on a synthetic record.
+  const p = {
+    id: 'TEST-M1', inst: 'CITYU', code: 'JS9998', titleZh: '', titleEn: 'x',
+    scoring: { scale: 'scale85', formula: { type: 'best_n', n: 5 }, m1m2ExclusiveWithMath: true },
+    scores: null, requirements: {}, status: 'verified',
+    source: { label: 't', asOf: '2026-01-01', url: 'https://example.org' }
+  };
   const prof = profile({ math: '4', electives: [{ code: 'M2', level: '5' }] });
-  const r = E.computeScore(prof, byId('CITYU-JS1211'), INST.CITYU);
+  const r = E.computeScore(prof, p, INST.CITYU);
   assert.equal(r.counted.some((c) => c.code === 'MATH'), false, 'weaker Maths must be dropped');
   assert.equal(r.counted.some((c) => c.code === 'M2'), true);
   assert.match(r.warnings.join(' '), /只計較高分的一科/);
@@ -132,10 +176,22 @@ test('JS1050 needs one science elective', () => {
 });
 
 test('blocked programmes are never scored', () => {
-  const r = E.computeScore(profile(), byId('CITYU-JS1805'), INST.CITYU);
+  // JS1805 used to be blocked and is now resolved by the 2027 file, so build a
+  // synthetic blocked record rather than depending on a particular code.
+  const blockedProg = {
+    id: 'TEST-BLOCKED', inst: 'CITYU', code: 'JS9999',
+    titleZh: '未核實課程', titleEn: 'unverified',
+    scoring: { scale: 'scale85', formula: { type: 'best_n', n: 5 } },
+    scores: { median: 30, lq: 28, entryYear: 2026, publishedFor: 2027 },
+    requirements: {}, status: 'blocked',
+    blockedReason: '測試用：官方文件中此課程的計分公式未能對應。',
+    source: { label: 'test', asOf: '2026-01-01', url: 'https://example.org' }
+  };
+  const r = E.computeScore(profile(), blockedProg, INST.CITYU);
   assert.equal(r.ok, false);
   assert.equal(r.status, 'blocked');
   assert.equal(r.score, null);
+  assert.match(r.blockedReason, /計分公式/);
 });
 
 /* ------------------------------------------------------------------ *
@@ -166,9 +222,9 @@ test('HKUST Engineering uses the published English x2 / Maths x2 only', () => {
 
 test('Applied Learning only counts where the programme recognises it', () => {
   const prof = profile({ catB: [{ code: 'APL1', level: 'ADII' }] });
-  const recognised = E.computeScore(prof, byId('CITYU-JS1040'), INST.CITYU);
+  const recognised = E.computeScore(prof, byId('CITYU-JS1040'), INST.CITYU);   // CityU lists this one
   assert.equal(recognised.pool.some((c) => c.kind === 'catB' && c.points === 4), true);
-  const notRecognised = E.computeScore(prof, byId('CITYU-JS1204'), INST.CITYU);
+  const notRecognised = E.computeScore(prof, byId('CITYU-JS1002'), INST.CITYU); // not on CityU's list
   assert.equal(notRecognised.pool.some((c) => c.kind === 'catB'), false);
 });
 
@@ -307,14 +363,12 @@ test('plan analysis flags duplicates, gaps and all-reach Band A', () => {
  * ------------------------------------------------------------------ */
 
 test('lift suggestions identify the cheapest single grade to close the gap', () => {
-  const p = byId('CITYU-JS1201');
+  const p = byId('CITYU-JS1204');   // Best 5, 生物/化學/英文/ICT/數學/M1/M2/物理 x1.5
   const lifts = E.liftSuggestions(profile(), p, INST.CITYU);
-  const chi = lifts.find((l) => l.code === 'CHI');
-  assert.equal(chi.from, '3');
-  assert.equal(chi.to, '4');
-  assert.equal(chi.gain, 1.5);          // (4 - 3) x 1.5 weighting
   const phy = lifts.find((l) => l.code === 'PHY');
-  assert.equal(phy.gain, 2.5);          // (4 - 3) x 2.5 weighting
+  assert.equal(phy.from, '3');
+  assert.equal(phy.gain, 1.5);          // (4 - 3) x 1.5 weighting
+  assert.equal(lifts.length > 0, true);
   assert.equal(lifts[0].gain >= lifts[lifts.length - 1].gain, true);
 });
 
@@ -426,6 +480,13 @@ test('every computable programme produces a number for a plausible profile', () 
 test('published median is never below the published lower quartile', () => {
   for (const p of PROGS) {
     if (!p.scores || p.scores.median == null || p.scores.lq == null) continue;
+    if (p.anomaly === 'median_below_lq') {
+      // The guide itself prints M < LQ for this row. It is recorded as printed and
+      // flagged, never silently swapped — so it is exempt from the invariant, but
+      // only if the record says why.
+      assert.ok(p.notes.some((n) => /算術上不可能/.test(n)), `${p.id}: anomaly not explained`);
+      continue;
+    }
     assert.ok(p.scores.median >= p.scores.lq, `${p.id}: median ${p.scores.median} < LQ ${p.scores.lq}`);
   }
 });

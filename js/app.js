@@ -348,6 +348,18 @@
       out += '<h4>備註</h4><ul>' + p.notes.map(function (n) { return '<li>' + esc(n) + '</li>'; }).join('') + '</ul>';
     }
 
+    if (p.admissions) {
+      var a = p.admissions;
+      var bits = [];
+      if (a.quota != null) bits.push('學額 ' + num(a.quota));
+      if (a.firstYearQuota != null) bits.push('首年學額 ' + num(a.firstYearQuota));
+      if (a.bandA != null) bits.push('Band A 報讀 ' + a.bandA + ' 人');
+      if (a.competition != null) bits.push('每學額 ' + num(a.competition) + ' 人');
+      if (bits.length) {
+        out += '<h4>學額與競爭（文憑試放榜後改選數字）</h4><div>' + esc(bits.join(' · ')) + '</div>';
+      }
+    }
+
     out += '<h4>資料來源</h4><div class="src">' + esc(p.source.label) + '<br>' +
       '<span class="asof">最後核對：' + esc(p.source.asOf) + ' · ' +
       (ev.history ? esc(ev.history.entryYear) + ' 年度入學分數（為 ' + esc(ev.history.publishedFor) + ' JUPAS 公布）' : '無歷史分數') +

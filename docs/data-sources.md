@@ -96,7 +96,36 @@ to produce a number at all.
   split, and no institution conversion for it was found → scored as 0 with a
   warning rather than guessed.
 
-### 6. Band A offer shares (marked 未核實 / unverified)
+## 2027-cycle update: 學友社《中六升學指南 2026》
+
+- Source: 學友社 (Hok Yau Club) 《中六升學指南 2026》, JUPAS score tables pp. 133–175,
+  data supplied by the institutions. Scanned PDF supplied by the user
+  (`university_choice.pdf`, 32 pages, 3072×4096 per page, no text layer).
+- Loaded as `js/data/programmes-2027.js`; these records **override** any earlier
+  record with the same JUPAS code, because the guide carries **2026-entry scores
+  recomputed under each institution's 2027 method**.
+- Transcription method: each page read as an image at native resolution, in
+  vertical halves, transcribed by eye. OCR (RapidOCR) was tested and **rejected**
+  for the Chinese text — it read `入學分數` as `入星分数`. The numbers were
+  cross-checked against records already held from official PDFs.
+- Status: **CityU complete (60 programmes)**. Remaining sections to transcribe:
+  HKBU, LU, PolyU, CUHK, HKUST, HKU, EdUHK, HKMU, plus the four SSSDP colleges.
+- Two things the guide changes materially:
+  1. **CityU adopts a new scoring method from 2027/28** (註四). Weights move from
+     ×2/×2.5 to ×1.25/×1.5, and several programmes move from "Best 5" to "3C+2X".
+  2. **JS1051, JS1805, JS1806, JS1807 are no longer `blocked`** — the guide prints
+     their formulas and scores, so they are now scored.
+- **Anomaly recorded, not corrected:** CityU JS1019 prints M 23 / LQ 23.5, which is
+  arithmetically impossible (median cannot be below the lower quartile). It is
+  stored as printed, flagged `anomaly: median_below_lq`, marked `partial`, and
+  labelled in the UI. The numbers were **not** swapped.
+- **Not in the guide:** CityU JS1001 was initially missed because it fell across a
+  crop boundary; it was recovered by re-reading the page seam. CityU has no
+  programme in the app that the guide lacks (after that fix). The guide lists two
+  2027 programmes the app did not have: **JS1063** (LLB & BSc Computer Science,
+  double degree) and **JS1120** (卓越全球人文社科課程), both with no scores yet.
+
+## Band A offer shares (marked 未核實 / unverified)
 
 Aggregated third-party summary of 2025 offers by institution — not an official
 JUPAS or institution publication. Kept in a separate panel with an explicit
