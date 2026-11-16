@@ -16,6 +16,12 @@ require(path.join(here, '..', 'js', 'data', 'programmes.js'));
 require(path.join(here, '..', 'js', 'data', 'programmes-ext.js'));
 require(path.join(here, '..', 'js', 'data', 'programmes-2027.js'));
 require(path.join(here, '..', 'js', 'data', 'programmes-2027-hkbu.js'));
+require(path.join(here, '..', 'js', 'data', 'programmes-2027-hkmu.js'));
+require(path.join(here, '..', 'js', 'data', 'programmes-2027-eduhk.js'));
+require(path.join(here, '..', 'js', 'data', 'programmes-2027-polyu.js'));
+require(path.join(here, '..', 'js', 'data', 'programmes-2027-hku.js'));
+require(path.join(here, '..', 'js', 'data', 'programmes-2027-hkust.js'));
+require(path.join(here, '..', 'js', 'data', 'programmes-2027-cuhk.js'));
 
 const INST = globalThis.JUPAS_INSTITUTIONS;
 const PROGS = globalThis.JUPAS_PROGRAMMES;
@@ -199,22 +205,32 @@ test('blocked programmes are never scored', () => {
  * HKUST partial-data handling
  * ------------------------------------------------------------------ */
 
-test('HKUST programmes compute but are flagged partial with the assumption stated', () => {
+test('HKUST is now fully scored from the guide, with its published weightings', () => {
   const p = byId('HKUST-JS5312');
-  assert.equal(p.status, 'partial');
+  assert.ok(p, 'HKUST JS5312 should be present');
+  assert.equal(p.status, 'verified');
+  assert.ok(p.scoring.weights.length > 0, 'the guide prints HKUST subject weightings');
   const r = score(p);
   assert.equal(r.ok, true);
-  assert.equal(r.status, 'partial');
-  assert.match(r.warnings.join(' '), /第 6 科加分率未在官方文件公布/);
-  assert.match(r.warnings.join(' '), /未收錄於本工具所依據的分數文件/);
+  assert.equal(r.status, 'verified');
 });
 
-test('HKUST Engineering uses the published English x2 / Maths x2 only', () => {
-  const prof = profile({ eng: '5', math: '5', electives: [{ code: 'PHY', level: '5' }, { code: 'M2', level: '5' }] });
-  const r = E.computeScore(prof, byId('HKUST-JS5240'), INST.HKUST);
-  // ENG 5.5x2=11, MATH 5.5x2=11, PHY 5.5, M2 5.5, CHI 3 -> best5 = 11+11+5.5+5.5+3 = 36
-  assert.equal(r.score, 36);
-  assert.equal(r.status, 'partial');
+test('HKUST JS5240 applies ENG x2 / MATH x2 / PHYSICS x2, and leaves BIO at x1', () => {
+  const p = byId('HKUST-JS5240');
+  // "如選修科目為物理，該分數×2；如選修科目為資訊及通訊科技，該分數×1.5；
+  //  如選修科目為生物/化學，該分數×1" — per-subject rates, not one blanket group rate.
+  const w = p.scoring.weights;
+  const has = (code, mult) => w.some((x) => (x.subjects || []).indexOf(code) >= 0 && x.w === mult);
+  assert.ok(has('ENG', 2) && has('MATH', 2) && has('PHY', 2) && has('ICT', 1.5));
+  assert.equal(w.some((x) => (x.subjects || []).indexOf('BIO') >= 0), false, 'BIO must not be weighted');
+
+  const phy = profile({ eng: '5', math: '5', electives: [{ code: 'PHY', level: '5' }, { code: 'M2', level: '5' }] });
+  // ENG 5.5x2=11, MATH 11, PHY 5.5x2=11, M2 5.5, CHI 3 -> 41.5
+  assert.equal(E.computeScore(phy, p, INST.HKUST).score, 41.5);
+
+  const bio = profile({ eng: '5', math: '5', electives: [{ code: 'BIO', level: '5' }, { code: 'M2', level: '5' }] });
+  // BIO is x1 in the guide -> 11 + 11 + 5.5 + 5.5 + 3 = 36
+  assert.equal(E.computeScore(bio, p, INST.HKUST).score, 36);
 });
 
 /* ------------------------------------------------------------------ *
@@ -473,22 +489,20 @@ test('HKBU now has a published ladder and is scored, against a MEAN not a median
   assert.equal(ev.deltaRef, ev.deltaMean);
 });
 
-test('LU / EdUHK / HKMU are scored on the 7-point ladder, not the 8.5 ladder', () => {
+test('the 7-point and 8.5-point ladders produce different totals for the same grades', () => {
   ['LU', 'EDUHK', 'HKMU'].forEach((code) => assert.equal(INST[code].defaultScale, 'scale7', code));
   ['HKU', 'CUHK', 'HKUST', 'CITYU', 'POLYU'].forEach((code) => assert.equal(INST[code].defaultScale, 'scale85', code));
 
-  // A 5** is worth 7 at LU and 8.5 at HKU — the same grade, different score.
+  // Synthetic records, so the test measures the ladder and not a particular row.
+  const mk = (scale) => ({
+    id: 'T-' + scale, inst: 'LU', code: 'JS9994', titleZh: '', titleEn: 'x',
+    scoring: { scale, formula: { type: 'best_n', n: 5 } }, scores: null,
+    requirements: {}, status: 'verified',
+    source: { label: 'x', asOf: '2026-01-01', url: 'https://example.org' }
+  });
   const prof = profile({ chi: '5**', eng: '5**', math: '5**', electives: [{ code: 'PHY', level: '5**' }, { code: 'CHEM', level: '5**' }] });
-  const lu = PROGS.find((p) => p.inst === 'LU' && p.scoring && p.scoring.scale === 'scale7');
-  const hku = PROGS.find((p) => p.inst === 'HKU' && p.scoring);
-  assert.ok(lu && hku);
-  const luScore = E.computeScore(prof, lu, INST.LU);
-  const hkuScore = E.computeScore(prof, hku, INST.HKU);
-  assert.equal(luScore.ok, true);
-  assert.equal(hkuScore.ok, true);
-  // five 5** at LU = 35 (7 each); at HKU the same five are 12.75 + 12.75 + 8.5 x 3 = 51
-  assert.equal(luScore.score, 35);
-  assert.equal(hkuScore.score, 51);
+  assert.equal(E.computeScore(prof, mk('scale7'), INST.LU).score, 35);      // five 5** x 7
+  assert.equal(E.computeScore(prof, mk('scale85'), INST.LU).score, 42.5);   // five 5** x 8.5
 });
 
 test('HKU publishes its 6th-subject bonus rate, so it is not a guess', () => {
@@ -507,13 +521,22 @@ test('HKU publishes its 6th-subject bonus rate, so it is not a guess', () => {
   assert.equal(six.score, 30.8);
 });
 
-test('extracted rows keep their provenance', () => {
-  const parsed = PROGS.filter((p) => p.provenance && p.provenance.extraction === 'parsed');
-  assert.ok(parsed.length >= 100, `expected the parsed institutions to be loaded, got ${parsed.length}`);
-  parsed.forEach((p) => {
-    assert.equal(p.sourceKey, 'JUPAS_2025_AGG', `${p.id}: extracted row from an unexpected source`);
-    assert.ok(p.source.url.includes('jupas.edu.hk'), `${p.id}: source is not the official publication`);
+test('every record states where its numbers came from', () => {
+  PROGS.forEach((p) => {
+    assert.ok(p.source && p.source.url, `${p.id}: no source`);
+    assert.ok(p.source.asOf, `${p.id}: undated source`);
+    assert.ok(p.sourceKey, `${p.id}: no sourceKey`);
   });
+
+  // Rows parsed from the official JUPAS aggregate must still point at it.
+  PROGS.filter((p) => p.sourceKey === 'JUPAS_2025_AGG').forEach((p) => {
+    assert.ok(p.source.url.includes('jupas.edu.hk'), `${p.id}: not the official publication`);
+  });
+
+  // The guide layer supersedes most of them, and must be attributed to the guide.
+  const guide = PROGS.filter((p) => p.sourceKey === 'HOKYAU_2026');
+  assert.ok(guide.length >= 250, `expected the guide layer, got ${guide.length}`);
+  guide.forEach((p) => assert.equal(p.source.asOf, '2026-11-17', `${p.id}: wrong guide date`));
 });
 
 test('every computable programme produces a number for a plausible profile', () => {

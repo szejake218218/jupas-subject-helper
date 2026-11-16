@@ -181,6 +181,22 @@
       (profile.catC || []).forEach(function (e) { add(e.code, e.level, 'catC', 'catC'); });
     }
 
+    // Group weightings: "the best ONE of 化學/物理/經濟/ICT gets ×1.25".
+    // Applied after the pool exists, because which subject earns the multiplier
+    // depends on the student's own grades — it is not a fixed per-subject rule.
+    (sc.weights || []).forEach(function (rule) {
+      if (!rule.group || !rule.group.length) return;
+      var members = pool.filter(function (c) { return rule.group.indexOf(c.code) >= 0; });
+      if (!members.length) return;
+      var best = members.slice().sort(function (a, b) { return b.points - a.points; })[0];
+      best.weight = rule.w;
+      best.weighted = best.points * rule.w;
+      best.groupApplied = true;
+      if (members.length > 1) {
+        warnings.push('科目比重「' + rule.group.join('／') + '」只計最佳的一科 → ×' + rule.w + ' 套用於 ' + best.code + '。');
+      }
+    });
+
     // M1 and M2 taken together count as one subject (CityU note 2).
     if (sc.m1m2AsOne) {
       var exts = pool.filter(function (c) { return c.code === 'M1' || c.code === 'M2'; });
