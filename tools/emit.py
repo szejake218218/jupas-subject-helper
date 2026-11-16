@@ -48,7 +48,7 @@ for inst_key, rows in ROWS.items():
             'id': inst + '-' + code,
             'inst': inst,
             'code': code,
-            'titleZh': '',
+            'titleZh': '',  # GARBLED rows are filtered below
             'titleEn': r['title'],
             'scoring': r['scoring'],
             'scores': {
