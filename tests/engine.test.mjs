@@ -486,8 +486,9 @@ test('a median with no lower quartile is still comparable (median reference)', (
 });
 
 test('a mean whose weightings were never published is not used as a comparison', () => {
-  // 理大 prints 入學平均分數（含科目比重） but the weightings live on Study@PolyU,
-  // so the printed mean is on a scale we cannot reproduce → must not compare.
+  // A printed mean that includes subject weightings is on a scale we cannot
+  // reproduce unless the weights are published → must not compare. (理大 now has
+  // them; this stays the rule for any programme that still does not.)
   const p = {
     id: 'TEST-POLY', inst: 'POLYU', code: 'JS9995', titleZh: '', titleEn: 'x',
     scoring: { formula: { type: 'best_n', n: 5 }, referenceUsable: false },
@@ -594,5 +595,69 @@ test('published median is never below the published lower quartile', () => {
       continue;
     }
     assert.ok(p.scores.median >= p.scores.lq, `${p.id}: median ${p.scores.median} < LQ ${p.scores.lq}`);
+  }
+});
+
+test('PolyU is scored from PolyU\'s own per-programme weighting PDFs', () => {
+  // https://www.polyu.edu.hk/saso/docdrive/jupas/2026_JS3003_SW.pdf
+  // JS3003 prints English 10, Mathematics 10, most electives 7, the rest 5.
+  const p = PROGS.find((x) => x.id === 'POLYU-JS3003');
+  assert.ok(p, 'POLYU-JS3003 should be present');
+  assert.equal(p.scoring.referenceUsable, true);
+  assert.equal(p.weightingSourceKey, 'POLYU_SW_2026');
+  assert.equal(p.scoring.defaultWeight, 5);
+  // CHI 4 -> 4x7=28, ENG 5 -> 5.5x10=55, MATH 5 -> 5.5x10=55, PHY 5 -> 5.5x7=38.5, ECON 4 -> 4x7=28
+  const r = E.computeScore(profile({ chi: '4', eng: '5', math: '5',
+    electives: [{ code: 'PHY', level: '5' }, { code: 'ECON', level: '4' }] }), p, INST.POLYU);
+  assert.equal(r.score, 204.5);
+  const ev = E.evaluate(profile({ chi: '4', eng: '5', math: '5',
+    electives: [{ code: 'PHY', level: '5' }, { code: 'ECON', level: '4' }] }), p, INST.POLYU);
+  assert.equal(ev.refType, 'mean');
+  assert.equal(ev.deltaRef, 2.1);            // 204.5 vs the published mean 202.4
+});
+
+test('PolyU\'s 6th-subject bonus is 10% of the weighted score, and only from Level 3', () => {
+  // PolyU: "Bonus Score = 10% x Equivalent HKDSE Score x Weighting of the 6th
+  // subject", table printed from Level 3 up (a Level 4 subject at weight 7 = 2.8).
+  const p = PROGS.find((x) => x.id === 'POLYU-JS3004');
+  assert.equal(p.scoring.formula.type, 'best_n_plus_bonus');
+  assert.equal(p.scoring.sixthBonusRate, 0.1);
+  const six = E.computeScore(profile({ chi: '5', eng: '5', math: '5',
+    electives: [{ code: 'PHY', level: '5' }, { code: 'CHEM', level: '4' }, { code: 'ECON', level: '4' }] }),
+    p, INST.POLYU);
+  // best 5: ENG 55 + MATH 55 + PHY 55 + CHI 38.5 + CHEM 28 = 231.5, + 10% of ECON (4x7=28) = 2.8
+  assert.equal(six.score, 234.3);
+  assert.equal(six.counted.filter((c) => c.isBonus).length, 1);
+
+  const weak = E.computeScore(profile({ chi: '5', eng: '5', math: '5',
+    electives: [{ code: 'PHY', level: '5' }, { code: 'CHEM', level: '4' }, { code: 'ECON', level: '2' }] }),
+    p, INST.POLYU);
+  assert.equal(weak.score, 231.5);
+  assert.ok(weak.warnings.some((w) => /第 6 科/.test(w)), weak.warnings.join(' / '));
+});
+
+test('EdUHK multiplies the subjects it names by the printed factor', () => {
+  // EdUHK 2026 Admission Scores Reference, JS8003: Chinese / English / Chinese
+  // Literature / ICT at x1.5, best 5, 7-point scale (5 = 5, not 5.5).
+  const p = PROGS.find((x) => x.id === 'EDUHK-JS8003');
+  assert.equal(p.scoring.referenceUsable, true);
+  assert.equal(p.weightingSourceKey, 'EDUHK_SW_2026');
+  assert.deepEqual(p.scoring.weights, [{ w: 1.5, subjects: ['CHI', 'CLIT', 'ENG', 'ICT'] }]);
+  const r = E.computeScore(profile({ chi: '4', eng: '5', math: '5',
+    electives: [{ code: 'PHY', level: '5' }, { code: 'ECON', level: '4' }] }), p, INST.EDUHK);
+  // CHI 4x1.5=6, ENG 5x1.5=7.5, MATH 5, PHY 5, ECON 4 -> 27.5
+  assert.equal(r.score, 27.5);
+});
+
+test('the programmes whose weighting rule cannot be reproduced still refuse to compare', () => {
+  // PolyU publishes no 2026/27 weighting sheet for these two, and EdUHK's rule is
+  // "the best ONE subject of a list" x1.5, which a per-subject weight cannot express.
+  for (const id of ['POLYU-JS3923', 'POLYU-JS3997', 'EDUHK-JS8007', 'EDUHK-JS8013']) {
+    const p = byId(id);
+    assert.ok(p, id + ' should be present');
+    assert.equal(p.scoring.referenceUsable, false, id + ' must not be compared');
+    const ev = E.evaluate(profile(), p, INST[p.inst]);
+    assert.equal(ev.refType, 'none', id);
+    assert.equal(ev.verdict, 'ref-unavailable', id);
   }
 });

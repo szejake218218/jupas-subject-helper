@@ -50,6 +50,42 @@ Nothing in the roster is inferred, interpolated, remembered, or "probably fine".
   (5\*\*=8.5 …) and the MBChB exception (5\*\*=7).
 - **Status: `partial`.**
 
+### 6. PolyU — Subject Weighting for 2026/27 Admission Exercise (one PDF per scheme)
+- URL pattern: https://www.polyu.edu.hk/saso/docdrive/jupas/2026_<JUPAS CODE>_SW.pdf
+  (fallback host `aradm`); each record's `weightingUrl` names the exact file used
+- Last checked 2026-11-17
+- Used for: **the subject weightings of 45 PolyU schemes**. The table is
+  `Subject Name | Subject Weighting for 2026/27 Admission Exercise`, Category A
+  subjects weighted **5, 7 or 10** (Chinese and English never below 7).
+- 6th-subject bonus: PolyU publishes *"Bonus Score = 10% x Equivalent HKDSE Score
+  x Weighting of the 6th subject"*, with the table printed from **Level 3** up
+  (https://www.polyu.edu.hk/saso/docdrive/jupas/Extra_Bonus_Score_for_Best_6th_Subject_for_2027_28.pdf).
+  Encoded as `sixthBonusRate: 0.1` + `bonusMinLevel: 3` on the 15 schemes whose
+  guide entry says "BEST 5 + 第六科加分".
+- **Not published**: JS3923 and JS3997 have no 2026/27 sheet on either host (only a
+  2027/28 one, which would not match the stored 2026-entry mean) → left unweighted.
+- Extraction: `pdftotext -table` → `tools/add-weightings.py`, which refuses to emit
+  if any Category A subject is unmapped or any weight falls outside 5/7/10.
+
+### 7. EdUHK — 2026 Admission Scores Reference for JUPAS Entrants
+- URL: https://eduhk.hk/acadprog/downloads/EdUHK_admission_scores_2026.pdf
+- Document dated 28 Oct 2026 · last checked 2026-11-17
+- Used for: **the subject weightings of 24 EdUHK programmes** — the
+  "HKDSE Subjects with Heavier Subject Weighting for Admission Score Calculation"
+  column, **For 2026 Entry** (the same year as the scores this app stores).
+  Multipliers are not uniform: x1.1, x1.2, x1.5, x1.6 and x2 all appear.
+- Best 5, 7-point scale, CSD excluded. Two programmes print "(No subject weighting)"
+  and are scored unweighted (which is exactly EdUHK's stated method for them).
+- The same PDF carries a second column, "for 2027 Entry", with revised multipliers
+  for JS8012 (Geography x1.75) and JS8702 (Physics x1.6, Maths/M1/M2 x1.4). The
+  record keeps the 2026 weighting because the stored scores are 2026-entry, and the
+  2027 revision is printed in the record's notes.
+- **Not encoded**: JS8007 and JS8013 weight "the best ONE subject of a list" by
+  x1.5. A per-subject weight would multiply every listed subject, which overstates
+  a student holding two of them → both stay `referenceUsable: false`.
+- Extraction: same script; it re-reads the PDF's weight cells and refuses to write
+  unless the transcribed table matches the document cell for cell.
+
 ## Conversion ladders (the single most consequential config)
 
 Taken from source 1, each institution's own statement:
@@ -77,6 +113,10 @@ to produce a number at all.
 | 2 HKU rows | HKU | published selection principle could not be parsed into a formula |
 
 ## Sections deliberately not loaded
+
+Status of the **earlier JUPAS aggregate import** (`programmes-ext.js`). The 2027
+guide layer supersedes most of it, so read this together with the coverage table
+below — an institution can be "not loaded" here and fully present there.
 
 | Institution | Why | Unblock by |
 |---|---|---|
@@ -116,14 +156,14 @@ to produce a number at all.
 | 城大 CityU | 60 | median + LQ, weights ×1.25/×1.5 → comparable |
 | 港大 HKU | 59 | UQ/M/LQ, weights printed before the subject (`1.5 × 英文`) → comparable |
 | 都大 HKMU | 51 | 28 JUPAS (M/LQ) + 22 SSSDP (listed only) |
-| 理大 PolyU | 47 | mean is published but 科目比重 lives on Study@PolyU → **no comparison** |
+| 理大 PolyU | 47 | weighted **mean**; weightings now read from PolyU's own per-scheme PDFs → compared to the mean (45 weighted, 44 comparable) |
 | 科大 HKUST | 34 | M/LQ + per-subject weights → comparable |
-| 教大 EdUHK | 26 | quartiles published as *already weighted*, weights not printed → **no comparison** |
+| 教大 EdUHK | 26 | quartiles + the printed heavier-weighting factors (x1.1–x2) → compared to LQ/median (24 weighted, 2 refused) |
 | 浸大 HKBU | 23 | weighted **mean** only, weightings published → compared to the mean |
 | 嶺大 LU | 20 | weighted **median only**, no LQ column → compared to the median |
 | SSSDP: 高科院 11, 東華 8, 恒大 6, 聖方濟各 6, 樹仁 3, 伍倫貢 2, 珠海 1 | 37 | **no conversion table on those pages** → listed with demand data, never scored |
 
-279 of the 422 rows have a reference this tool can reproduce and therefore compare
+347 of the 422 rows have a reference this tool can reproduce and therefore compare
 against. The rest are shown with their published numbers and an explicit reason.
 
 ### Four comparison modes (the engine had to grow)
@@ -134,9 +174,9 @@ programme is being compared with, and never substitutes another:
 - `lq` — lower quartile (and median if printed)
 - `median` — median only, no LQ (嶺大)
 - `mean` — a weighted mean whose weightings are published, so it is reproducible (浸大)
-- `none` — a figure is printed but its arithmetic is not reproducible (理大's
-  Study@PolyU weightings, 教大's pre-weighted quartiles, SSSDP's missing table).
-  The UI says so instead of comparing.
+- `none` — a figure is printed but its arithmetic is not reproducible (PolyU
+  JS3923/JS3997 and EdUHK JS8007/JS8013 whose weighting rule cannot be expressed,
+  SSSDP's missing table). The UI says so instead of comparing.
 
 ### Things the guide changed
 

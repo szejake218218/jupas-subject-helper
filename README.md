@@ -50,14 +50,14 @@ USB stick, or open with no internet at all.
 | CityU 城大 | 60 | median + LQ, weights ×1.25/×1.5 (new 2027 method) | yes |
 | HKU 港大 | 59 | UQ/M/LQ, weights printed before the subject | yes |
 | HKMU 都大 | 51 | 28 JUPAS (M/LQ) + 22 SSSDP (listed only) | partly |
-| PolyU 理大 | 47 | weighted mean, but weightings are on Study@PolyU | **no — says so** |
+| PolyU 理大 | 47 | weighted mean + PolyU's own per-scheme weighting PDFs | yes (44) |
 | HKUST 科大 | 34 | M/LQ + per-subject weights | yes |
-| EdUHK 教大 | 26 | quartiles already weighted, weights not printed | **no — says so** |
+| EdUHK 教大 | 26 | quartiles + the printed x1.1–x2 heavier-weighting factors | yes (24) |
 | HKBU 浸大 | 23 | weighted **mean** only (5\*\*=7, the 7-point ladder) | vs the mean |
 | LU 嶺大 | 20 | weighted **median** only, no LQ column | vs the median |
 | SSSDP ×7 (高科院 11, 東華 8, 恒大 6, 聖方濟各 6, 樹仁 3, 伍倫貢 2, 珠海 1) | 37 | no conversion table published on those pages | **no — never scored** |
 
-279 of the 422 rows have a reference this tool can reproduce, and therefore compare
+347 of the 422 rows have a reference this tool can reproduce, and therefore compare
 against. The rest are shown with their published numbers **and an explicit reason** —
 the app never invents a comparison it cannot justify.
 
@@ -66,9 +66,15 @@ the app never invents a comparison it cannot justify.
 Institutions do not publish comparable things, and the app refuses to bridge the gap
 with an assumption:
 
-- **理大** publishes 入學平均分數（含科目比重） but keeps 科目比重 on Study@PolyU, so the
-  printed mean is on a scale this tool cannot reproduce.
-- **教大** publishes quartiles marked 「已包含加權分數」 but does not print the weights.
+- **理大** keeps 科目比重 on Study@PolyU, one PDF per scheme
+  (`2026_<CODE>_SW.pdf`). All 47 were fetched: 45 carry a 2026/27 table and are now
+  scored; **JS3923 / JS3997** have no 2026/27 sheet on either host, so they stay
+  unweighted rather than borrowing the 2027/28 one.
+- **教大** prints the heavier-weighting factors in its own
+  `EdUHK_admission_scores_2026.pdf`: 24 programmes have a per-subject multiplier
+  (x1.1 / x1.2 / x1.5 / x1.6 / x2), 2 print "(No subject weighting)" and are scored
+  unweighted, and **JS8007 / JS8013** weight "the best ONE subject of a list" — a rule
+  a per-subject weight cannot express, so they stay unweighted.
 - **SSSDP / self-financing pages** print no 入學分數換算表 at all, so no ladder exists
   to score on. They appear with quotas, Band A counts and competition ratios only.
 

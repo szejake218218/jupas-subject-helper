@@ -476,10 +476,17 @@
     var keys = Object.keys(SOURCES);
     $('sources').innerHTML = keys.map(function (k) {
       var s = SOURCES[k];
+      // A source can supply a programme's numbers or only its subject weightings;
+      // say which, so "0 個課程" never appears next to a source that is in use.
       var n = PROGS.filter(function (p) { return p.sourceKey === k; }).length;
+      var nw = PROGS.filter(function (p) { return p.weightingSourceKey === k; }).length;
+      var uses = [];
+      if (n) uses.push(n + ' 個課程的分數');
+      if (nw) uses.push(nw + ' 個課程的科目比重');
+      if (!uses.length) uses.push('未直接引用');
       return '<div class="src-block"><strong>' + esc(s.label) + '</strong>' +
         '<div>' + esc(s.note) + '</div>' +
-        '<div class="asof">用於 ' + n + ' 個課程 · 最後核對 ' + esc(s.asOf) + '</div>' +
+        '<div class="asof">用於 ' + uses.join('、') + ' · 最後核對 ' + esc(s.asOf) + '</div>' +
         '<a href="' + esc(s.url) + '" target="_blank" rel="noopener">' + esc(s.url) + '</a></div>';
     }).join('');
 
@@ -508,12 +515,20 @@
       PROGS.length + ' 個課程 / ' + Object.keys(instN).length + ' 所院校' +
       (parsed ? '（其中 ' + parsed + ' 個由官方 PDF 自動抽取）' : '');
 
-    var all = Object.keys(INST).map(function (c) { return INST[c]; })
-      .concat(OTHER.map(function (o) { return { short: o.short, code: o.code, bandA: o.bandA, nameZh: o.nameZh }; }));
+    var all = Object.keys(INST).map(function (c) { return INST[c]; });
+    // JUPAS_OTHER_INSTITUTIONS is a list of institution codes, not objects, and
+    // every one of them is already in INSTITUTIONS — resolve the codes and skip
+    // the ones already listed instead of assuming a shape.
+    OTHER.forEach(function (c) { if (INST[c] && all.indexOf(INST[c]) === -1) all.push(INST[c]); });
     $('bandATable').innerHTML = '<thead><tr><th>院校</th><th>Band A 考生佔取錄比例</th>' +
       '<th class="num">Band A 以外取錄</th><th class="num">總取錄人數</th></tr></thead><tbody>' +
       all.map(function (i) {
         var b = i.bandA;
+        // The SSSDP / self-financing institutions publish no Band A breakdown.
+        if (!b || b.share == null) {
+          return '<tr><td>' + esc(i.nameZh || i.short) + '</td><td class="num">未收錄</td>' +
+            '<td class="num">未收錄</td><td class="num">未收錄</td></tr>';
+        }
         return '<tr><td>' + esc(i.nameZh || i.short) + '</td><td class="num">' + b.share.toFixed(1) + '%</td>' +
           '<td class="num">' + b.outside + '</td><td class="num">' + b.totalOffers + '</td></tr>';
       }).join('') + '</tbody>';

@@ -304,13 +304,20 @@
         warnings.push('可計分科目只有 ' + counted.length + ' 科，少於公式要求的 ' + n + ' 科。');
         status = bumpStatus(status, 'partial');
       }
-      // 6th-subject bonus (HKUST). Rate is not published in the source we hold.
+      // 6th-subject bonus: HKU (20% of the 6th subject's points) and PolyU (10% of
+      // its weighted score, and only from Level 3 up - PolyU prints its bonus
+      // table starting at Level 3, so a lower 6th subject earns nothing).
       if (formula.type === 'best_n_plus_bonus') {
         var sixth = rest[needed];
         if (sixth) {
+          var strongEnough = sc.bonusMinLevel == null ||
+            GRADE_ORDER.indexOf(sixth.level) >= GRADE_ORDER.indexOf(String(sc.bonusMinLevel));
           if (sc.sixthBonusRate == null) {
             warnings.push('第 6 科加分率未在官方文件公布 → 未加分，此分數為下限。');
             status = bumpStatus(status, 'partial');
+          } else if (!strongEnough) {
+            warnings.push('第 6 科（' + sixth.code + ' ' + sixth.level + '）未達 ' + sc.bonusMinLevel +
+                          ' 級，按院校公布不獲第 6 科加分。');
           } else {
             var bonus = Math.round(sixth.weighted * sc.sixthBonusRate * 100) / 100;
             sixth = { code: sixth.code, level: sixth.level, kind: sixth.kind, category: sixth.category,
