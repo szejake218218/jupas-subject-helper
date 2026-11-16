@@ -100,30 +100,78 @@ to produce a number at all.
 
 - Source: 學友社 (Hok Yau Club) 《中六升學指南 2026》, JUPAS score tables pp. 133–175,
   data supplied by the institutions. Scanned PDF supplied by the user
-  (`university_choice.pdf`, 32 pages, 3072×4096 per page, no text layer).
-- Loaded as `js/data/programmes-2027.js`; these records **override** any earlier
-  record with the same JUPAS code, because the guide carries **2026-entry scores
-  recomputed under each institution's 2027 method**.
-- Transcription method: each page read as an image at native resolution, in
-  vertical halves, transcribed by eye. OCR (RapidOCR) was tested and **rejected**
-  for the Chinese text — it read `入學分數` as `入星分数`. The numbers were
-  cross-checked against records already held from official PDFs.
-- Status: **CityU complete (60 programmes)**. Remaining sections to transcribe:
-  HKBU, LU, PolyU, CUHK, HKUST, HKU, EdUHK, HKMU, plus the four SSSDP colleges.
-- Two things the guide changes materially:
-  1. **CityU adopts a new scoring method from 2027/28** (註四). Weights move from
-     ×2/×2.5 to ×1.25/×1.5, and several programmes move from "Best 5" to "3C+2X".
-  2. **JS1051, JS1805, JS1806, JS1807 are no longer `blocked`** — the guide prints
-     their formulas and scores, so they are now scored.
-- **Anomaly recorded, not corrected:** CityU JS1019 prints M 23 / LQ 23.5, which is
-  arithmetically impossible (median cannot be below the lower quartile). It is
-  stored as printed, flagged `anomaly: median_below_lq`, marked `partial`, and
-  labelled in the UI. The numbers were **not** swapped.
-- **Not in the guide:** CityU JS1001 was initially missed because it fell across a
-  crop boundary; it was recovered by re-reading the page seam. CityU has no
-  programme in the app that the guide lacks (after that fix). The guide lists two
-  2027 programmes the app did not have: **JS1063** (LLB & BSc Computer Science,
-  double degree) and **JS1120** (卓越全球人文社科課程), both with no scores yet.
+  (`university_choice.pdf`, 32 pages, 3072×4096 per page, **no text layer**).
+- Loaded as `js/data/programmes-2027*.js` (one file per institution). These records
+  **override** any earlier record with the same JUPAS code, because the guide carries
+  **2026-entry scores recomputed under each institution's 2027 method**.
+- Transcription: every page read as an image at native resolution and transcribed by
+  eye. OCR (RapidOCR) was tested and **rejected** — it read `入學分數` as `入星分数`,
+  `學額競爭情況` as `学额鹅手情况`.
+
+### Coverage after this pass — 424 programmes, 16 institutions
+
+| Institution | Rows | How its figures are compared |
+|---|---|---|
+| 中大 CUHK | 65 | median + LQ published, weightings published → comparable |
+| 城大 CityU | 60 | median + LQ, weights ×1.25/×1.5 → comparable |
+| 港大 HKU | 59 | UQ/M/LQ, weights printed before the subject (`1.5 × 英文`) → comparable |
+| 都大 HKMU | 51 | 28 JUPAS (M/LQ) + 22 SSSDP (listed only) |
+| 理大 PolyU | 47 | mean is published but 科目比重 lives on Study@PolyU → **no comparison** |
+| 科大 HKUST | 34 | M/LQ + per-subject weights → comparable |
+| 教大 EdUHK | 26 | quartiles published as *already weighted*, weights not printed → **no comparison** |
+| 浸大 HKBU | 23 | weighted **mean** only, weightings published → compared to the mean |
+| 嶺大 LU | 20 | weighted **median only**, no LQ column → compared to the median |
+| SSSDP: 高科院 11, 東華 8, 恒大 6, 聖方濟各 6, 樹仁 3, 伍倫貢 2, 珠海 1 | 37 | **no conversion table on those pages** → listed with demand data, never scored |
+
+281 of the 424 rows have a reference this tool can reproduce and therefore compare
+against. The rest are shown with their published numbers and an explicit reason.
+
+### Four comparison modes (the engine had to grow)
+
+Institutions do not publish comparable things, so `evaluate()` reports which figure a
+programme is being compared with, and never substitutes another:
+
+- `lq` — lower quartile (and median if printed)
+- `median` — median only, no LQ (嶺大)
+- `mean` — a weighted mean whose weightings are published, so it is reproducible (浸大)
+- `none` — a figure is printed but its arithmetic is not reproducible (理大's
+  Study@PolyU weightings, 教大's pre-weighted quartiles, SSSDP's missing table).
+  The UI says so instead of comparing.
+
+### Things the guide changed
+
+1. **CityU adopts a new scoring method from 2027/28** (註四): weights move from
+   ×2/×2.5 to ×1.25/×1.5, and several programmes move from "Best 5" to "3C+2X".
+2. **JS1051, JS1805, JS1806, JS1807 are no longer `blocked`** — the guide prints
+   their formulas and scores.
+3. **浸大 is no longer unscorable.** The guide publishes its ladder (5**=7 — the
+   7-point scale, not 8.5), so its 23 programmes moved from "no data" to `mean`
+   comparison. Its Cat C table was transcribed except 烏爾都語, whose row overlapped
+   and could not be read.
+
+### Verification
+
+- **19 of 19 unweighted 中大 rows reproduce exactly** when their printed grade
+  profile is recomputed to their published total. That validates the transcription
+  itself, not just the code. Weighted rows cannot be checked this way because the
+  printed profile does not say *which* electives X1–X4 were.
+- 嶺大: all 20 rows satisfy Band A ÷ 學額 = the printed 每學額競爭人數 to 2 d.p.
+  (a reader who uses the second quota column fails JS7802 and JS7905, where the two
+  columns differ).
+- **Anomaly recorded, not corrected:** CityU JS1019 prints M 23 / LQ 23.5 — a median
+  below its own lower quartile, which is arithmetically impossible. Stored as
+  printed, flagged `anomaly: median_below_lq`, marked `partial`, labelled in the UI.
+  The numbers were **not** swapped.
+
+### Programmes in the app that the guide does not list
+
+- **LU-JS7101** (B.A. Hons in Chinese) — from the official 2025 aggregate, absent
+  from the guide's 嶺大 page. Kept, with its source recorded.
+- Two further legacy rows (**HKMU-JS9555**, **LU-JS7123**) were fragments whose
+  "title" field held a data row (`^ Bachelor of … 23 22`). They are not in the guide
+  and were removed rather than repaired.
+- The guide lists two CityU 2027 programmes the app did not have: **JS1063**
+  (LLB & BSc Computer Science) and **JS1120** (卓越全球人文社科課程), both unscored.
 
 ## Band A offer shares (marked 未核實 / unverified)
 

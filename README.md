@@ -1,6 +1,6 @@
 # JUPAS 選科助手 — JUPAS Subject Choice Helper
 
-**Product by Jake Sze** · [![tests](https://img.shields.io/badge/tests-34%20passing-brightgreen)](#tests) ![licence](https://img.shields.io/badge/licence-MIT-blue)
+**Product by Jake Sze** · [![tests](https://img.shields.io/badge/tests-38%20passing-brightgreen)](#tests) ![licence](https://img.shields.io/badge/licence-MIT-blue)
 
 輸入你的 DSE 成績 → 按**每科課程自己公布的加權計分方法**計算分數 → 對照去年獲取錄者的
 中位數／下四分位數 → 檢查你的 20 個志願排位（Band A–E）。
@@ -20,7 +20,7 @@ and lower quartile, and check the ordering of your 20 JUPAS choices.
 ## Contents
 
 - [Use it](#use-it) · [Run locally](#run-locally) · [Tests](#tests)
-- [Coverage](#coverage) — 9 institutions configured, 200 programmes loaded
+- [Coverage](#coverage) — 16 institutions, 424 programmes
 - [Why some data is missing](#why-some-data-is-missing) — nothing is estimated
 - [Applied Learning (Category B)](#applied-learning-category-b)
 - [Rebuilding the extracted data](#rebuilding-the-extracted-data)
@@ -42,35 +42,37 @@ USB stick, or open with no internet at all.
 
 ## Coverage
 
-**All nine JUPAS participating institutions are configured** (conversion ladder,
-Category B/C handling, entrance gate). **Seven have per-programme data**:
+**16 institutions, 424 programmes**, all rebuilt from 學友社《中六升學指南 2026》.
 
-| Institution | Programmes | Score ladder | Data status | Source |
-|---|---:|---|---|---|
-| CityUHK 城大 | 58 | 5\*\*=8.5 | `verified` — formula + weightings + scores published | CityU 2026 JUPAS admission-score PDF |
-| HKU 港大 | 42 | 5\*\*=8.5 | `verified` — formula + weightings + 6th-subject bonus (0.2) published | JUPAS aggregate (HKU section) |
-| HKUST 科大 | 33 | 5\*\*=8.5 | `partial` — programme weightings & bonus rate not published | HKUST admissions-scores PDF |
-| HKMU 都大 | 28 | **5\*\*=7** | `partial` — "Best 5", some weightings published | JUPAS aggregate (HKMU section) |
-| EdUHK 教大 | 25 | **5\*\*=7** | `partial` — LQ/median column order reversed vs other institutions | JUPAS aggregate (EdUHK section) |
-| LU 嶺大 | 13 | **5\*\*=7** | `partial` — weighted scores published, per-subject weightings not | JUPAS aggregate (LU section) |
-| CUHK 中大 | 1 | 5\*\*=8.5 | `partial` | CUHK IBBA programme page |
-| PolyU 理大 | 0 | 5\*\*=8.5 | institution configured, **no rows** — see below | — |
-| HKBU 浸大 | 0 | **not published** | institution configured, **no rows**, nothing scored | — |
+| Institution | Programmes | Reference used | Comparable? |
+|---|---:|---|---|
+| CUHK 中大 | 65 | median + LQ + published weightings | yes |
+| CityU 城大 | 60 | median + LQ, weights ×1.25/×1.5 (new 2027 method) | yes |
+| HKU 港大 | 59 | UQ/M/LQ, weights printed before the subject | yes |
+| HKMU 都大 | 51 | 28 JUPAS (M/LQ) + 22 SSSDP (listed only) | partly |
+| PolyU 理大 | 47 | weighted mean, but weightings are on Study@PolyU | **no — says so** |
+| HKUST 科大 | 34 | M/LQ + per-subject weights | yes |
+| EdUHK 教大 | 26 | quartiles already weighted, weights not printed | **no — says so** |
+| HKBU 浸大 | 23 | weighted **mean** only (5\*\*=7, the 7-point ladder) | vs the mean |
+| LU 嶺大 | 20 | weighted **median** only, no LQ column | vs the median |
+| SSSDP ×7 (高科院 11, 東華 8, 恒大 6, 聖方濟各 6, 樹仁 3, 伍倫貢 2, 珠海 1) | 37 | no conversion table published on those pages | **no — never scored** |
 
-**200 programmes total.** 6 are deliberately `blocked` (rule unreadable) and are
-not scored at all.
+281 of the 424 rows have a reference this tool can reproduce, and therefore compare
+against. The rest are shown with their published numbers **and an explicit reason** —
+the app never invents a comparison it cannot justify.
 
-### Why PolyU and HKBU have no per-programme rows
+### Why some institutions are listed but not scored
 
-- **PolyU**: in the official aggregate PDF, the programme code, formula and score
-  columns drift out of alignment across rows (merged cells). Row identity is lost,
-  so any automated read would produce confident wrong numbers. Needs PolyU's own
-  "JUPAS Admissions Figures" parsed properly.
-- **HKBU**: publishes grade profiles plus a mean score, with **no conversion
-  table** — so it cannot be scored on any ladder without inventing one. Left null;
-  the engine refuses to score rather than pick a ladder.
-- **CUHK**: only 1 programme. CUHK's section pairs each row with a grade profile
-  and a weighted total; the parse is not reliable enough yet.
+Institutions do not publish comparable things, and the app refuses to bridge the gap
+with an assumption:
+
+- **理大** publishes 入學平均分數（含科目比重） but keeps 科目比重 on Study@PolyU, so the
+  printed mean is on a scale this tool cannot reproduce.
+- **教大** publishes quartiles marked 「已包含加權分數」 but does not print the weights.
+- **SSSDP / self-financing pages** print no 入學分數換算表 at all, so no ladder exists
+  to score on. They appear with quotas, Band A counts and competition ratios only.
+
+Each of these is labelled in the UI rather than silently approximated.
 
 ## Run locally
 
@@ -83,7 +85,7 @@ node --test tests/engine.test.mjs
 
 ## Tests
 
-**34 tests, all passing.** Arithmetic is hand-computed from the published rules
+**38 tests, all passing.** Arithmetic is hand-computed from the published rules
 and asserted exactly — weighted best-5, 3-core+2-elective, the Maths/M1-M2
 exclusivity rule, the 7-point vs 8.5-point ladder difference, HKU's published 0.2
 sixth-subject bonus, Category B points and the one-ApL rule — plus roster-integrity
@@ -101,9 +103,12 @@ js/data/subjects.js         Category A subject catalogue
 js/data/apl.js              Category B (Applied Learning) catalogue — HKEAA
 js/data/institutions.js     nine institutions: ladder, Cat B/C, gate, conventions
 js/data/programmes.js       CityU / HKUST / CUHK rows (hand-entered, sourced)
-js/data/programmes-ext.js   HKU / HKMU / EdUHK / LU rows (extracted, validated)
+js/data/programmes-ext.js   legacy rows from the official aggregate (superseded)
+js/data/programmes-2027*.js per-institution 2027 layer from 學友社 guide
+                            (cityu, cuhk, hku, hkust, hkbu, lu, polyu, eduhk,
+                             hkmu, + sssdp: sfu, chc, hsuhk, twc, thei, uow, hksyu)
 js/app.js                   UI only — calls the engine, does no arithmetic
-tests/engine.test.mjs       34 tests
+tests/engine.test.mjs       38 tests
 tools/generate.py           per-institution parse + validation
 tools/emit.py               emits js/data/programmes-ext.js
 build.mjs                   single-file build
