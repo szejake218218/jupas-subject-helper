@@ -20,7 +20,7 @@ and lower quartile, and check the ordering of your 20 JUPAS choices.
 ## Contents
 
 - [Use it](#use-it) · [Run locally](#run-locally) · [Tests](#tests)
-- [Coverage](#coverage) — 16 institutions, 424 programmes
+- [Coverage](#coverage) — 16 institutions, 422 programmes
 - [Why some data is missing](#why-some-data-is-missing) — nothing is estimated
 - [Applied Learning (Category B)](#applied-learning-category-b)
 - [Rebuilding the extracted data](#rebuilding-the-extracted-data)
@@ -42,7 +42,7 @@ USB stick, or open with no internet at all.
 
 ## Coverage
 
-**16 institutions, 424 programmes**, all rebuilt from 學友社《中六升學指南 2026》.
+**16 institutions, 422 programmes**, all rebuilt from 學友社《中六升學指南 2026》.
 
 | Institution | Programmes | Reference used | Comparable? |
 |---|---:|---|---|
@@ -57,7 +57,7 @@ USB stick, or open with no internet at all.
 | LU 嶺大 | 20 | weighted **median** only, no LQ column | vs the median |
 | SSSDP ×7 (高科院 11, 東華 8, 恒大 6, 聖方濟各 6, 樹仁 3, 伍倫貢 2, 珠海 1) | 37 | no conversion table published on those pages | **no — never scored** |
 
-281 of the 424 rows have a reference this tool can reproduce, and therefore compare
+279 of the 422 rows have a reference this tool can reproduce, and therefore compare
 against. The rest are shown with their published numbers **and an explicit reason** —
 the app never invents a comparison it cannot justify.
 

@@ -108,7 +108,7 @@ to produce a number at all.
   eye. OCR (RapidOCR) was tested and **rejected** — it read `入學分數` as `入星分数`,
   `學額競爭情況` as `学额鹅手情况`.
 
-### Coverage after this pass — 424 programmes, 16 institutions
+### Coverage after this pass — 422 programmes, 16 institutions
 
 | Institution | Rows | How its figures are compared |
 |---|---|---|
@@ -123,7 +123,7 @@ to produce a number at all.
 | 嶺大 LU | 20 | weighted **median only**, no LQ column → compared to the median |
 | SSSDP: 高科院 11, 東華 8, 恒大 6, 聖方濟各 6, 樹仁 3, 伍倫貢 2, 珠海 1 | 37 | **no conversion table on those pages** → listed with demand data, never scored |
 
-281 of the 424 rows have a reference this tool can reproduce and therefore compare
+279 of the 422 rows have a reference this tool can reproduce and therefore compare
 against. The rest are shown with their published numbers and an explicit reason.
 
 ### Four comparison modes (the engine had to grow)
