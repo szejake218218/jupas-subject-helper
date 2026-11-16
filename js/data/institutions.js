@@ -108,12 +108,21 @@
     HKBU: {
       code: 'HKBU', nameZh: '香港浸會大學', nameEn: 'Hong Kong Baptist University', short: '浸大',
       colour: '#1e5631',
-      defaultScale: null,       // not published in the aggregate → nothing can be scored
-      catC: null,
-      scoringDefaults: { catCAsElective: false, aplAsElective: false, csdCounted: false },
+      // Ladder published in 學友社《中六升學指南 2026》 p.138 (institution-supplied):
+      // 1→1, 2→2, 3→3, 4→4, 5→5, 5*→6, 5**→7 — the 7-point scale, like LU/EdUHK/HKMU.
+      defaultScale: 'scale7',
+      catC: {
+        JAP: { 'N1': 7, 'N2': 5.5, 'N3': 4 },
+        KOR: { '6': 7, '5': 5.5, '4': 5.5, '3': 4 },
+        FRA: { 'C2': 7, 'C1': 7, 'B2': 5.5, 'B1': 5.5, 'A2': 4 },
+        GER: { 'C2': 7, 'C1': 7, 'B2': 5.5, 'B1': 5.5, 'A2': 4 },
+        SPA: { 'C2': 7, 'C1': 7, 'B2': 5.5, 'B1': 5.5, 'A2': 4 }
+      },
+      scoringDefaults: { catCAsElective: true, aplAsElective: false, csdCounted: false },
       gate: null, gateNote: NO_GATE, gateSource: null,
-      scaleNote: '官方彙編的浸大章節只公布各科等級概況及平均分，未列明換算表 → 本工具不計算浸大課程分數。',
-      noProgrammesReason: '浸大公布的是「等級概況 ＋ 平均分」，沒有可直接對應的分數欄 → 未載入個別課程資料。',
+      scaleSource: '學友社《中六升學指南 2026》p.138（院校提供資料）：5**=7、5*=6、5=5、4=4、3=3、2=2、1=1',
+      catCNote: '丙類換算按指南 p.138 抄錄；烏爾都語一列字跡重疊、未能確認，故不計烏爾都語。',
+      referenceNote: '浸大只公布「入學分數總平均分（最佳五科，含科目比重）」，沒有中位數／下四分位數 → 比較基準為平均分。',
       bandA: { share: 69.6, outside: 322, totalOffers: 1060, verified: false }
     },
     LU: {

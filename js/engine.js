@@ -424,11 +424,21 @@
     var hist = program.scores || null;
     var out = {
       program: program, score: score, requirement: req,
-      history: hist,
-      deltaLq: null, deltaMedian: null, verdict: 'unknown'
+      history: hist, refType: null,
+      deltaLq: null, deltaMedian: null, deltaMean: null, deltaRef: null,
+      verdict: 'unknown'
     };
-    if (score.ok && hist && hist.lq != null) out.deltaLq = Math.round((score.score - hist.lq) * 100) / 100;
-    if (score.ok && hist && hist.median != null) out.deltaMedian = Math.round((score.score - hist.median) * 100) / 100;
+    // Which published figure does this programme actually give us to compare against?
+    if (hist && hist.mean != null && hist.lq == null) out.refType = 'mean';
+    else if (hist && hist.lq != null) out.refType = 'lq';
+
+    var r2 = function (n) { return Math.round(n * 100) / 100; };
+    if (score.ok && hist) {
+      if (out.refType === 'mean') out.deltaMean = r2(score.score - hist.mean);
+      if (hist.lq != null) out.deltaLq = r2(score.score - hist.lq);
+      if (hist.median != null) out.deltaMedian = r2(score.score - hist.median);
+      out.deltaRef = (out.refType === 'mean') ? out.deltaMean : out.deltaLq;
+    }
     out.verdict = verdictOf(out);
     return out;
   }
@@ -436,6 +446,10 @@
   // Historical position only — never a probability of admission.
   function verdictOf(ev) {
     if (!ev.score.ok) return ev.score.status === 'blocked' ? 'blocked' : 'ineligible';
+    if (ev.refType === 'mean') {
+      if (ev.deltaMean == null) return 'no-history';
+      return ev.deltaMean >= 0 ? 'above-mean' : 'below-mean';
+    }
     if (ev.deltaLq == null) return 'no-history';
     if (ev.deltaMedian != null && ev.deltaMedian >= 0) return 'above-median';
     if (ev.deltaLq >= 0) return 'between-lq-median';
@@ -446,6 +460,8 @@
     'above-median': '高於去年中位數',
     'between-lq-median': '介乎去年下四分位數與中位數',
     'below-lq': '低於去年下四分位數',
+    'above-mean': '高於去年平均分',
+    'below-mean': '低於去年平均分',
     'ineligible': '不符合／無法計算',
     'blocked': '計分規則未核實',
     'no-history': '無歷史分數'
@@ -511,6 +527,7 @@
       var rank = i + 1;
       var band = bandOf(rank);
       var kind = !ev.score.ok ? 'bad'
+        : ev.refType === 'mean' ? (ev.deltaMean >= 0 ? 'safe' : 'reach')
         : (ev.deltaMedian != null && ev.deltaMedian >= 0) ? 'safe'
         : (ev.deltaLq != null && ev.deltaLq >= 0) ? 'border' : 'reach';
       bandSummary[band].n += 1;

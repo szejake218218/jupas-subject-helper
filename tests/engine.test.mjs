@@ -15,6 +15,7 @@ require(path.join(here, '..', 'js', 'data', 'apl.js'));
 require(path.join(here, '..', 'js', 'data', 'programmes.js'));
 require(path.join(here, '..', 'js', 'data', 'programmes-ext.js'));
 require(path.join(here, '..', 'js', 'data', 'programmes-2027.js'));
+require(path.join(here, '..', 'js', 'data', 'programmes-2027-hkbu.js'));
 
 const INST = globalThis.JUPAS_INSTITUTIONS;
 const PROGS = globalThis.JUPAS_PROGRAMMES;
@@ -392,7 +393,10 @@ test('every programme is well formed', () => {
       assert.ok(p.scoring.formula.type, `${p.id} formula has no type`);
     }
     if (p.scores) {
-      assert.ok(p.scores.median != null && p.scores.lq != null, `${p.id} history is half-filled`);
+      // Either a published median + LQ pair, or a published weighted mean (HKBU).
+      const hasPair = p.scores.median != null && p.scores.lq != null;
+      const hasMean = p.scores.mean != null;
+      assert.ok(hasPair || hasMean, `${p.id} history is half-filled`);
       assert.ok(p.scores.entryYear && p.scores.publishedFor, `${p.id} history is not dated`);
     }
   }
@@ -405,16 +409,36 @@ test('all nine participating institutions are configured', () => {
 });
 
 test('a programme is never scored on a ladder its institution has not published', () => {
-  // HKBU's conversion is not published in the aggregate, so its ladder is null.
-  assert.equal(INST.HKBU.defaultScale, null);
-  const fake = {
-    id: 'HKBU-TEST', inst: 'HKBU', code: 'JS9999', titleZh: '', titleEn: 'x',
-    scoring: {}, scores: null, requirements: {}, status: 'verified', source: { label: 'x', asOf: 'x' }
+  // Synthetic institution whose conversion was never published — the engine must
+  // refuse rather than fall back to a default ladder.
+  const noLadder = { code: 'TEST', nameZh: '測試', short: '測試', defaultScale: null,
+                     scoringDefaults: {}, gate: null, scaleNote: '換算表未收錄' };
+  const p = {
+    id: 'TEST-1', inst: 'TEST', code: 'JS9997', titleZh: '', titleEn: 'x',
+    scoring: { formula: { type: 'best_n', n: 5 } }, scores: null,
+    requirements: {}, status: 'verified',
+    source: { label: 'x', asOf: '2026-01-01', url: 'https://example.org' }
   };
-  const r = E.computeScore(profile(), fake, INST.HKBU);
+  const r = E.computeScore(profile(), p, noLadder);
   assert.equal(r.ok, false);
   assert.equal(r.status, 'blocked');
   assert.match(r.blockedReason, /換算/);
+});
+
+test('HKBU now has a published ladder and is scored, against a MEAN not a median', () => {
+  assert.equal(INST.HKBU.defaultScale, 'scale7');   // 5**=7, published in the guide
+  const p = PROGS.find((x) => x.inst === 'HKBU' && x.scores && x.scores.mean != null);
+  assert.ok(p, 'HKBU programmes should now carry a mean');
+  assert.equal(p.scores.median, null);
+  assert.equal(p.scores.lq, null);
+  assert.equal(p.scores.reference, 'mean');
+
+  const ev = E.evaluate(profile(), p, INST.HKBU);
+  assert.equal(ev.refType, 'mean');
+  assert.equal(typeof ev.deltaMean, 'number');
+  assert.equal(ev.deltaLq, null);
+  assert.ok(['above-mean', 'below-mean'].indexOf(ev.verdict) >= 0, `verdict was ${ev.verdict}`);
+  assert.equal(ev.deltaRef, ev.deltaMean);
 });
 
 test('LU / EdUHK / HKMU are scored on the 7-point ladder, not the 8.5 ladder', () => {

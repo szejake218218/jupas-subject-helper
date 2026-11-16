@@ -252,8 +252,8 @@
 
     var cmp = {
       delta: function (a, b) {
-        var av = a.deltaLq == null ? -Infinity : a.deltaLq;
-        var bv = b.deltaLq == null ? -Infinity : b.deltaLq;
+        var av = a.deltaRef == null ? -Infinity : a.deltaRef;
+        var bv = b.deltaRef == null ? -Infinity : b.deltaRef;
         return bv - av;
       },
       score: function (a, b) { return (b.score.score || -Infinity) - (a.score.score || -Infinity); },
@@ -274,13 +274,16 @@
   function metricBlock(ev) {
     var s = ev.score;
     var sc = s.ok ? num(s.score) : '—';
-    var d = ev.deltaLq;
+    var isMean = ev.refType === 'mean';
+    var d = ev.deltaRef;
     var cls = d == null ? '' : (d >= 0 ? 'pos' : 'neg');
+    var refLabel = isMean ? '去年平均分' : '去年 LQ';
+    var refVal = ev.history ? (isMean ? ev.history.mean : ev.history.lq) : null;
     return '<div class="prog-metrics">' +
       '<div><label>我的分數</label><b>' + sc + '</b></div>' +
-      '<div><label>去年 LQ</label><b>' + (ev.history ? num(ev.history.lq) : '—') + '</b></div>' +
-      '<div><label>去年中位數</label><b>' + (ev.history ? num(ev.history.median) : '—') + '</b></div>' +
-      '<div><label>對比 LQ</label><b class="' + cls + '">' + signed(d) + '</b></div>' +
+      '<div><label>' + refLabel + '</label><b>' + num(refVal) + '</b></div>' +
+      '<div><label>去年中位數</label><b>' + (ev.history && ev.history.median != null ? num(ev.history.median) : (isMean ? '未公布' : '—')) + '</b></div>' +
+      '<div><label>對比' + (isMean ? '平均分' : ' LQ') + '</label><b class="' + cls + '">' + signed(d) + '</b></div>' +
       '<div><label>最低要求</label><b>' + (ev.requirement.met === null ? '—' : (ev.requirement.met ? '✓ 符合' : '✗ 未符合')) + '</b></div>' +
       '</div>';
   }
